@@ -1,16 +1,43 @@
 package io.github.lazorenkoo.deskback;
 
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.Kernel32Util;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.Win32Exception;
 import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class WindowsApps {
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
     public record VisibleWindow(long processId, String title) {}
+    public record RunningApp(long processId, String windowTitle, String name, Path executablePath) {}
+
+    public static List<RunningApp> findRunningApps() {
+        List<RunningApp> result = new ArrayList<>();
+        for (VisibleWindow window : findVisibleWindows()) {
+            WinNT.HANDLE process = Kernel32.INSTANCE.OpenProcess(
+                    WinNT.PROCESS_QUERY_LIMITED_INFORMATION, false, (int) window.processId());
+            if (process == null) {
+                continue;
+            }
+            try {
+                String executable = Kernel32Util.QueryFullProcessImageName(process, 0);
+                Path path = Path.of(executable);
+                String name = path.getFileName().toString().replaceFirst("(?i)\\.exe$", "");
+                result.add(new RunningApp(window.processId(), window.title(), name, path));
+            } catch (Win32Exception exception) {
+                continue;
+            } finally {
+                Kernel32.INSTANCE.CloseHandle(process);
+            }
+        }
+        return List.copyOf(result);
+    }
 
     public static List<VisibleWindow> findVisibleWindows() {
         User32 windows = User32.INSTANCE;
