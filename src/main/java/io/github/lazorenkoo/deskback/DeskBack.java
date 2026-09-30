@@ -14,6 +14,7 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.font.TextAttribute;
+import java.awt.event.ActionEvent;
 import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -70,6 +71,8 @@ public class DeskBack {
         window.setAlwaysOnTop(true);
         window.setAutoRequestFocus(false);
         window.setType(JFrame.Type.UTILITY);
+        Timer closeTimer = new Timer(10_000, event -> window.dispose());
+        closeTimer.setRepeats(false);
 
         JButton restoreButton = new JButton("Restore") {
             @Override
@@ -115,6 +118,11 @@ public class DeskBack {
         restoreButton.setBorder(BorderFactory.createEmptyBorder(0, 44, 0, 10));
         restoreButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         restoreButton.addActionListener(event -> {
+            if ((event.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
+                closeTimer.stop();
+                AppSelection.show(window, darkTheme);
+                return;
+            }
             restoreButton.setText("Nothing saved");
             restoreButton.setCursor(Cursor.getDefaultCursor());
         });
@@ -139,8 +147,6 @@ public class DeskBack {
         window.setLocation(x, y);
         window.setVisible(true);
 
-        Timer closeTimer = new Timer(10_000, event -> window.dispose());
-        closeTimer.setRepeats(false);
         closeTimer.start();
     }
 }
