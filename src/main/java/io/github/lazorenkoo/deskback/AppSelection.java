@@ -19,17 +19,14 @@ import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
 import javax.swing.ScrollPaneConstants;
 
 final class AppSelection {
-    static void show(JFrame window, boolean darkTheme) {
-        show(window, darkTheme, List.of("Google Chrome", "File Explorer", "Notepad"));
-    }
-
-    static void show(JFrame window, boolean darkTheme, List<String> names) {
+    static void show(JFrame window, boolean darkTheme, List<WindowsApps.RunningApp> runningApps) {
         Color background = darkTheme ? new Color(30, 33, 31) : new Color(244, 245, 242);
         Color foreground = darkTheme ? new Color(245, 247, 244) : new Color(35, 43, 34);
         Color selected = darkTheme ? new Color(49, 77, 53) : new Color(217, 235, 212);
@@ -51,7 +48,7 @@ final class AppSelection {
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         List<JToggleButton> apps = new ArrayList<>();
-        JButton restore = new JButton("Restore (" + names.size() + ")") {
+        JButton restore = new JButton("Restore (" + runningApps.size() + ")") {
             @Override
             protected void paintComponent(Graphics graphics) {
                 paintButton(graphics, this, isEnabled() ? accent : excluded,
@@ -59,20 +56,22 @@ final class AppSelection {
             }
         };
         styleButton(restore);
-        restore.setEnabled(!names.isEmpty());
-        restore.addActionListener(event -> restore.setText("Demo only"));
+        restore.setEnabled(!runningApps.isEmpty());
+        restore.setToolTipText("Launching apps will be added in the next step.");
+        restore.addActionListener(event -> restore.setText("Not ready yet"));
 
         JPanel rows = new JPanel(new GridLayout(0, 1, 0, 6));
         rows.setBackground(background);
-        for (String name : names) {
-            JToggleButton app = new JToggleButton(name, true) {
+        for (WindowsApps.RunningApp runningApp : runningApps) {
+            JToggleButton app = new JToggleButton(runningApp.name(), true) {
                 @Override
                 protected void paintComponent(Graphics graphics) {
                     paintButton(graphics, this, isSelected() ? selected : excluded, foreground, true);
                 }
             };
             styleButton(app);
-            app.setToolTipText(name);
+            app.setToolTipText(runningApp.executablePath().toString());
+            app.putClientProperty("runningApp", runningApp);
             app.setPreferredSize(new Dimension(240, 36));
             apps.add(app);
             app.addItemListener(event -> {
@@ -81,6 +80,12 @@ final class AppSelection {
                 restore.setEnabled(count > 0);
             });
             rows.add(app);
+        }
+        if (runningApps.isEmpty()) {
+            JLabel empty = new JLabel("No apps found");
+            empty.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            empty.setForeground(foreground);
+            rows.add(empty);
         }
 
         JScrollPane scroll = new JScrollPane(rows, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -109,7 +114,7 @@ final class AppSelection {
         Rectangle bounds = window.getGraphicsConfiguration().getBounds();
         Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(window.getGraphicsConfiguration());
         int availableHeight = bounds.height - insets.top - insets.bottom - 32;
-        int contentHeight = Math.max(36, names.size() * 42 - 6) + 64;
+        int contentHeight = Math.max(36, runningApps.size() * 42 - 6) + 64;
         panel.setPreferredSize(new Dimension(260, Math.min(contentHeight, availableHeight)));
         window.setContentPane(panel);
         window.getRootPane().setDefaultButton(restore);

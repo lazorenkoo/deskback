@@ -19,11 +19,14 @@ import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 
 public class DeskBack {
@@ -120,7 +123,34 @@ public class DeskBack {
         restoreButton.addActionListener(event -> {
             if ((event.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
                 closeTimer.stop();
-                AppSelection.show(window, darkTheme);
+                restoreButton.setEnabled(false);
+                restoreButton.setText("Loading…");
+                new SwingWorker<List<WindowsApps.RunningApp>, Void>() {
+                    @Override
+                    protected List<WindowsApps.RunningApp> doInBackground() {
+                        return WindowsApps.findRunningApps();
+                    }
+
+                    @Override
+                    protected void done() {
+                        if (!window.isDisplayable()) {
+                            return;
+                        }
+                        try {
+                            AppSelection.show(window, darkTheme, get());
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            restoreButton.setText("Try again");
+                            restoreButton.setEnabled(true);
+                            closeTimer.restart();
+                        } catch (ExecutionException exception) {
+                            restoreButton.setText("Try again");
+                            restoreButton.setToolTipText("Could not read running apps. Ctrl-click to retry.");
+                            restoreButton.setEnabled(true);
+                            closeTimer.restart();
+                        }
+                    }
+                }.execute();
                 return;
             }
             restoreButton.setText("Nothing saved");
