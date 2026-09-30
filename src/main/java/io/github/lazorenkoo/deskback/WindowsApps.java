@@ -10,7 +10,10 @@ import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public final class WindowsApps {
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
@@ -36,7 +39,17 @@ public final class WindowsApps {
                 Kernel32.INSTANCE.CloseHandle(process);
             }
         }
-        return List.copyOf(result);
+        return uniqueApps(result);
+    }
+
+    static List<RunningApp> uniqueApps(List<RunningApp> apps) {
+        Map<String, RunningApp> unique = new LinkedHashMap<>();
+        for (RunningApp app : apps) {
+            String path = app.executablePath().toAbsolutePath().normalize().toString()
+                    .toLowerCase(Locale.ROOT);
+            unique.putIfAbsent(path, app);
+        }
+        return List.copyOf(unique.values());
     }
 
     public static List<VisibleWindow> findVisibleWindows() {
