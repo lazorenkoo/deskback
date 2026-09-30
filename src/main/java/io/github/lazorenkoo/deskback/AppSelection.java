@@ -26,7 +26,7 @@ import javax.swing.JToggleButton;
 import javax.swing.ScrollPaneConstants;
 
 final class AppSelection {
-    static void show(JFrame window, boolean darkTheme, List<WindowsApps.RunningApp> runningApps) {
+    static void show(JFrame window, boolean darkTheme, List<SessionStore.SavedApp> savedApps) {
         Color background = darkTheme ? new Color(30, 33, 31) : new Color(244, 245, 242);
         Color foreground = darkTheme ? new Color(245, 247, 244) : new Color(35, 43, 34);
         Color selected = darkTheme ? new Color(49, 77, 53) : new Color(217, 235, 212);
@@ -48,7 +48,7 @@ final class AppSelection {
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         List<JToggleButton> apps = new ArrayList<>();
-        JButton restore = new JButton("Restore (" + runningApps.size() + ")") {
+        JButton restore = new JButton("Restore (" + savedApps.size() + ")") {
             @Override
             protected void paintComponent(Graphics graphics) {
                 paintButton(graphics, this, isEnabled() ? accent : excluded,
@@ -56,22 +56,22 @@ final class AppSelection {
             }
         };
         styleButton(restore);
-        restore.setEnabled(!runningApps.isEmpty());
+        restore.setEnabled(!savedApps.isEmpty());
         restore.setToolTipText("Launching apps will be added in the next step.");
         restore.addActionListener(event -> restore.setText("Not ready yet"));
 
         JPanel rows = new JPanel(new GridLayout(0, 1, 0, 6));
         rows.setBackground(background);
-        for (WindowsApps.RunningApp runningApp : runningApps) {
-            JToggleButton app = new JToggleButton(runningApp.name(), true) {
+        for (SessionStore.SavedApp savedApp : savedApps) {
+            JToggleButton app = new JToggleButton(savedApp.name(), true) {
                 @Override
                 protected void paintComponent(Graphics graphics) {
                     paintButton(graphics, this, isSelected() ? selected : excluded, foreground, true);
                 }
             };
             styleButton(app);
-            app.setToolTipText(runningApp.executablePath().toString());
-            app.putClientProperty("runningApp", runningApp);
+            app.setToolTipText(savedApp.executablePath().toString());
+            app.putClientProperty("savedApp", savedApp);
             app.setPreferredSize(new Dimension(240, 36));
             apps.add(app);
             app.addItemListener(event -> {
@@ -81,8 +81,8 @@ final class AppSelection {
             });
             rows.add(app);
         }
-        if (runningApps.isEmpty()) {
-            JLabel empty = new JLabel("No apps found");
+        if (savedApps.isEmpty()) {
+            JLabel empty = new JLabel("No saved apps");
             empty.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             empty.setForeground(foreground);
             rows.add(empty);
@@ -114,7 +114,7 @@ final class AppSelection {
         Rectangle bounds = window.getGraphicsConfiguration().getBounds();
         Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(window.getGraphicsConfiguration());
         int availableHeight = bounds.height - insets.top - insets.bottom - 32;
-        int contentHeight = Math.max(36, runningApps.size() * 42 - 6) + 64;
+        int contentHeight = Math.max(36, savedApps.size() * 42 - 6) + 64;
         panel.setPreferredSize(new Dimension(260, Math.min(contentHeight, availableHeight)));
         window.setContentPane(panel);
         window.getRootPane().setDefaultButton(restore);

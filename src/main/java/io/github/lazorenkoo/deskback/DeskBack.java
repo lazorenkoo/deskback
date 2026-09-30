@@ -61,6 +61,10 @@ public class DeskBack {
     }
 
     private static void showWindow(boolean darkTheme) {
+        showWindow(darkTheme, new SessionStore());
+    }
+
+    private static void showWindow(boolean darkTheme, SessionStore sessions) {
         Color normalColor = darkTheme ? new Color(40, 43, 40) : new Color(237, 238, 234);
         Color hoverColor = darkTheme ? new Color(51, 57, 50) : new Color(228, 233, 225);
         Color pressedColor = darkTheme ? new Color(60, 68, 58) : new Color(218, 224, 215);
@@ -121,40 +125,44 @@ public class DeskBack {
         restoreButton.setBorder(BorderFactory.createEmptyBorder(0, 44, 0, 10));
         restoreButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         restoreButton.addActionListener(event -> {
-            if ((event.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
-                closeTimer.stop();
-                restoreButton.setEnabled(false);
-                restoreButton.setText("Loading…");
-                new SwingWorker<List<WindowsApps.RunningApp>, Void>() {
-                    @Override
-                    protected List<WindowsApps.RunningApp> doInBackground() {
-                        return WindowsApps.findRunningApps();
-                    }
+            boolean chooseApps = (event.getModifiers() & ActionEvent.CTRL_MASK) != 0;
+            closeTimer.stop();
+            restoreButton.setEnabled(false);
+            restoreButton.setText("Loading…");
+            new SwingWorker<List<SessionStore.SavedApp>, Void>() {
+                @Override
+                protected List<SessionStore.SavedApp> doInBackground() throws IOException {
+                    return sessions.load();
+                }
 
-                    @Override
-                    protected void done() {
-                        if (!window.isDisplayable()) {
-                            return;
-                        }
-                        try {
-                            AppSelection.show(window, darkTheme, get());
-                        } catch (InterruptedException exception) {
-                            Thread.currentThread().interrupt();
-                            restoreButton.setText("Try again");
-                            restoreButton.setEnabled(true);
-                            closeTimer.restart();
-                        } catch (ExecutionException exception) {
-                            restoreButton.setText("Try again");
-                            restoreButton.setToolTipText("Could not read running apps. Ctrl-click to retry.");
-                            restoreButton.setEnabled(true);
-                            closeTimer.restart();
-                        }
+                @Override
+                protected void done() {
+                    if (!window.isDisplayable()) {
+                        return;
                     }
-                }.execute();
-                return;
-            }
-            restoreButton.setText("Nothing saved");
-            restoreButton.setCursor(Cursor.getDefaultCursor());
+                    try {
+                        List<SessionStore.SavedApp> savedApps = get();
+                        if (chooseApps) {
+                            AppSelection.show(window, darkTheme, savedApps);
+                        } else {
+                            restoreButton.setText(savedApps.isEmpty() ? "Nothing saved" : "Saved: " + savedApps.size());
+                            restoreButton.setToolTipText("Ctrl-click to choose saved apps. Launching is not available yet.");
+                            restoreButton.setEnabled(true);
+                            closeTimer.restart();
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        restoreButton.setText("Try again");
+                        restoreButton.setEnabled(true);
+                        closeTimer.restart();
+                    } catch (ExecutionException exception) {
+                        restoreButton.setText("Try again");
+                        restoreButton.setToolTipText("Could not read the saved session. Click to retry.");
+                        restoreButton.setEnabled(true);
+                        closeTimer.restart();
+                    }
+                }
+            }.execute();
         });
 
         window.setBackground(normalColor);
