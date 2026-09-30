@@ -48,7 +48,7 @@ public final class WindowsApps {
                 if (isSystemComponent(path)) {
                     continue;
                 }
-                String name = path.getFileName().toString().replaceFirst("(?i)\\.exe$", "");
+                String name = appName(path);
                 result.add(new RunningApp(window.processId(), window.title(), name, path));
             } catch (Win32Exception exception) {
                 continue;
@@ -57,6 +57,10 @@ public final class WindowsApps {
             }
         }
         return uniqueApps(result);
+    }
+
+    static String appName(Path executablePath) {
+        return AppName.read(executablePath);
     }
 
     static List<RunningApp> uniqueApps(List<RunningApp> apps) {
