@@ -30,9 +30,14 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 
 public class DeskBack {
+    private static JFrame currentWindow;
+
     public static void main(String[] args) {
         boolean darkTheme = isWindowsDarkTheme();
-        SwingUtilities.invokeLater(() -> showWindow(darkTheme));
+        SwingUtilities.invokeLater(() -> {
+            DesktopTray.start(() -> showWindow(isWindowsDarkTheme()));
+            showWindow(darkTheme);
+        });
     }
 
     private static boolean isWindowsDarkTheme() {
@@ -65,6 +70,11 @@ public class DeskBack {
     }
 
     private static void showWindow(boolean darkTheme, SessionStore sessions) {
+        if (currentWindow != null && currentWindow.isDisplayable()) {
+            currentWindow.setVisible(true);
+            currentWindow.toFront();
+            return;
+        }
         Color normalColor = darkTheme ? new Color(40, 43, 40) : new Color(237, 238, 234);
         Color hoverColor = darkTheme ? new Color(51, 57, 50) : new Color(228, 233, 225);
         Color pressedColor = darkTheme ? new Color(60, 68, 58) : new Color(218, 224, 215);
@@ -72,6 +82,7 @@ public class DeskBack {
         Color iconBackground = darkTheme ? new Color(57, 66, 54) : new Color(220, 226, 216);
         Color iconColor = darkTheme ? new Color(175, 196, 162) : new Color(99, 119, 93);
         JFrame window = new JFrame("DeskBack");
+        currentWindow = window;
         window.setUndecorated(true);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         window.setResizable(false);
