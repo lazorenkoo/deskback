@@ -145,10 +145,7 @@ public class DeskBack {
                         if (chooseApps) {
                             AppSelection.show(window, darkTheme, savedApps);
                         } else {
-                            restoreButton.setText(savedApps.isEmpty() ? "Nothing saved" : "Saved: " + savedApps.size());
-                            restoreButton.setToolTipText("Ctrl-click to choose saved apps. Launching is not available yet.");
-                            restoreButton.setEnabled(true);
-                            closeTimer.restart();
+                            restoreApps(window, restoreButton, savedApps, closeTimer::restart);
                         }
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();
@@ -186,5 +183,39 @@ public class DeskBack {
         window.setVisible(true);
 
         closeTimer.start();
+    }
+
+    static void restoreApps(JFrame window, JButton button, List<SessionStore.SavedApp> apps, Runnable finished) {
+        button.setEnabled(false);
+        button.setText("Starting…");
+        new SwingWorker<AppLauncher.Result, Void>() {
+            @Override
+            protected AppLauncher.Result doInBackground() {
+                return AppLauncher.launch(apps);
+            }
+
+            @Override
+            protected void done() {
+                if (!window.isDisplayable()) {
+                    return;
+                }
+                try {
+                    AppLauncher.Result result = get();
+                    button.setText(!result.failures().isEmpty() ? "Errors: " + result.failures().size()
+                            : result.started() > 0 ? "Started: " + result.started()
+                            : result.skipped() > 0 ? "Already open" : "Nothing saved");
+                    button.setToolTipText("Started: " + result.started() + ", already running: " + result.skipped()
+                            + (result.failures().isEmpty() ? "" : "; " + String.join("; ", result.failures())));
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    button.setText("Try again");
+                } catch (ExecutionException exception) {
+                    button.setText("Try again");
+                    button.setToolTipText("Could not restore apps: " + exception.getCause().getMessage());
+                }
+                button.setEnabled(true);
+                finished.run();
+            }
+        }.execute();
     }
 }

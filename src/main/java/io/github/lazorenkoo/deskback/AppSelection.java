@@ -57,8 +57,13 @@ final class AppSelection {
         };
         styleButton(restore);
         restore.setEnabled(!savedApps.isEmpty());
-        restore.setToolTipText("Launching apps will be added in the next step.");
-        restore.addActionListener(event -> restore.setText("Not ready yet"));
+        restore.addActionListener(event -> {
+            List<SessionStore.SavedApp> chosen = apps.stream().filter(JToggleButton::isSelected)
+                    .map(button -> (SessionStore.SavedApp) button.getClientProperty("savedApp")).toList();
+            apps.forEach(button -> button.setEnabled(false));
+            DeskBack.restoreApps(window, restore, chosen,
+                    () -> apps.forEach(button -> button.setEnabled(true)));
+        });
 
         JPanel rows = new JPanel(new GridLayout(0, 1, 0, 6));
         rows.setBackground(background);
