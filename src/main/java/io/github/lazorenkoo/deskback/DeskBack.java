@@ -30,12 +30,15 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 
 public class DeskBack {
+    public static final int SESSION_UPDATE_INTERVAL_SECONDS = 30;
     private static JFrame currentWindow;
 
     public static void main(String[] args) {
         boolean darkTheme = isWindowsDarkTheme();
         SwingUtilities.invokeLater(() -> {
             DesktopTray.start(() -> showWindow(isWindowsDarkTheme()));
+            new SessionRecorder(new SessionStore(), WindowsApps::findRunningApps)
+                    .start(SESSION_UPDATE_INTERVAL_SECONDS);
             showWindow(darkTheme);
         });
     }

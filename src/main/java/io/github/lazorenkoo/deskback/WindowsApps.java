@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class WindowsApps {
+    private static final Map<String, String> APP_NAMES = new ConcurrentHashMap<>();
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
     private static final int DWMWA_CLOAKED = 14;
     private static final Set<String> SYSTEM_COMPONENTS = Set.of(
@@ -60,7 +62,8 @@ public final class WindowsApps {
     }
 
     static String appName(Path executablePath) {
-        return AppName.read(executablePath);
+        String key = executablePath.toAbsolutePath().normalize().toString().toLowerCase(Locale.ROOT);
+        return APP_NAMES.computeIfAbsent(key, ignored -> AppName.read(executablePath));
     }
 
     static List<RunningApp> uniqueApps(List<RunningApp> apps) {
