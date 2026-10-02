@@ -34,6 +34,23 @@ public class DeskBack {
     private static JFrame currentWindow;
 
     public static void main(String[] args) {
+        SingleInstance instance;
+        try {
+            instance = SingleInstance.acquire();
+        } catch (IOException exception) {
+            System.err.println("Could not start DeskBack: " + exception.getMessage());
+            return;
+        }
+        if (instance == null) {
+            return;
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                instance.close();
+            } catch (IOException exception) {
+                System.err.println("Could not release instance lock: " + exception.getMessage());
+            }
+        }, "deskback-instance-release"));
         SessionRecorder recorder = new SessionRecorder(new SessionStore(), WindowsApps::findRunningApps);
         SessionEndListener.start(recorder);
         boolean darkTheme = isWindowsDarkTheme();
