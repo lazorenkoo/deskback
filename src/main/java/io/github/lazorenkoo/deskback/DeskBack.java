@@ -34,11 +34,12 @@ public class DeskBack {
     private static JFrame currentWindow;
 
     public static void main(String[] args) {
+        SessionRecorder recorder = new SessionRecorder(new SessionStore(), WindowsApps::findRunningApps);
+        SessionEndListener.start(recorder);
         boolean darkTheme = isWindowsDarkTheme();
         SwingUtilities.invokeLater(() -> {
             DesktopTray.start(() -> showWindow(isWindowsDarkTheme()));
-            new SessionRecorder(new SessionStore(), WindowsApps::findRunningApps)
-                    .start(SESSION_UPDATE_INTERVAL_SECONDS);
+            recorder.start(SESSION_UPDATE_INTERVAL_SECONDS);
             showWindow(darkTheme);
         });
     }

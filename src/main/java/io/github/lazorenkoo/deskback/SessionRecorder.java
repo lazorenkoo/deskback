@@ -11,6 +11,9 @@ import java.util.function.Supplier;
 final class SessionRecorder {
     private final SessionStore sessions;
     private final Supplier<List<WindowsApps.RunningApp>> runningApps;
+    private final Object saveLock = new Object();
+    private boolean paused;
+    private long sessionChange;
     private List<SessionStore.SavedApp> previous;
 
     SessionRecorder(SessionStore sessions, Supplier<List<WindowsApps.RunningApp>> runningApps) {
@@ -37,20 +40,46 @@ final class SessionRecorder {
     }
 
     void update() throws IOException {
-        if (previous == null) {
-            try {
-                previous = sorted(sessions.load());
-            } catch (IOException exception) {
-                previous = null;
+        long change;
+        synchronized (saveLock) {
+            if (paused) {
+                return;
             }
+            change = sessionChange;
         }
         List<WindowsApps.RunningApp> apps = runningApps.get();
         List<SessionStore.SavedApp> current = sorted(apps.stream()
                 .map(app -> new SessionStore.SavedApp(app.name(), app.executablePath()))
                 .toList());
-        if (!current.equals(previous)) {
-            sessions.save(apps);
-            previous = current;
+        synchronized (saveLock) {
+            if (paused || change != sessionChange) {
+                return;
+            }
+            if (previous == null) {
+                try {
+                    previous = sorted(sessions.load());
+                } catch (IOException exception) {
+                    previous = null;
+                }
+            }
+            if (!current.equals(previous)) {
+                sessions.save(apps);
+                previous = current;
+            }
+        }
+    }
+
+    void pause() {
+        synchronized (saveLock) {
+            paused = true;
+            sessionChange++;
+        }
+    }
+
+    void resume() {
+        synchronized (saveLock) {
+            paused = false;
+            sessionChange++;
         }
     }
 
