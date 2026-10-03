@@ -17,7 +17,11 @@ import java.awt.font.TextAttribute;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Path2D;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -34,6 +38,7 @@ public class DeskBack {
     private static JFrame currentWindow;
 
     public static void main(String[] args) {
+        configureErrorLog();
         SingleInstance instance;
         try {
             instance = SingleInstance.acquire();
@@ -220,6 +225,17 @@ public class DeskBack {
         window.setVisible(true);
 
         closeTimer.start();
+    }
+
+    private static void configureErrorLog() {
+        try {
+            Path log = Path.of(System.getenv("LOCALAPPDATA"), "DeskBack", "errors.log");
+            Files.createDirectories(log.getParent());
+            System.setErr(new PrintStream(Files.newOutputStream(log,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND), true, StandardCharsets.UTF_8));
+        } catch (IOException exception) {
+            System.err.println("Could not open error log: " + exception.getMessage());
+        }
     }
 
     static void restoreApps(JFrame window, JButton button, List<SessionStore.SavedApp> apps, Runnable finished) {
