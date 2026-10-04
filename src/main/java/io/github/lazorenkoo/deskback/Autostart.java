@@ -27,17 +27,40 @@ final class Autostart {
         command(javaw, jar);
         String script = """
                 $ErrorActionPreference = 'Stop'
-                $path = Join-Path ([Environment]::GetFolderPath('Startup')) 'DeskBack.lnk'
-                $shell = New-Object -ComObject WScript.Shell
-                $link = $shell.CreateShortcut($path)
+                $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                $service = New-Object -ComObject Schedule.Service
+                $service.Connect()
+                $folder = $service.GetFolder('\\')
                 $arguments = '-jar "' + $env:DESKBACK_JAR + '"'
-                if (!(Test-Path -LiteralPath $path) -or $link.TargetPath -ne $env:DESKBACK_JAVA -or $link.Arguments -ne $arguments) {
-                    $link.TargetPath = $env:DESKBACK_JAVA
-                    $link.Arguments = $arguments
-                    $link.WorkingDirectory = Split-Path -LiteralPath $env:DESKBACK_JAR
-                    $link.Description = 'DeskBack'
-                    $link.Save()
+                $workingDirectory = Split-Path -LiteralPath $env:DESKBACK_JAR
+                $existing = $null
+                try { $existing = $folder.GetTask('DeskBack') } catch {}
+                if (!$existing -or $existing.Definition.Actions.Item(1).Path -ne $env:DESKBACK_JAVA -or
+                        $existing.Definition.Actions.Item(1).Arguments -ne $arguments -or
+                        $existing.Definition.Actions.Item(1).WorkingDirectory -ne $workingDirectory -or
+                        !$existing.Enabled -or $existing.Definition.Triggers.Item(1).Type -ne 9) {
+                    $task = $service.NewTask(0)
+                    $task.RegistrationInfo.Description = 'DeskBack'
+                    $task.Principal.UserId = $user
+                    $task.Principal.LogonType = 3
+                    $task.Principal.RunLevel = 0
+                    $trigger = $task.Triggers.Create(9)
+                    $trigger.UserId = $user
+                    $trigger.Delay = 'PT0S'
+                    $task.Settings.Enabled = $true
+                    $task.Settings.DisallowStartIfOnBatteries = $false
+                    $task.Settings.StopIfGoingOnBatteries = $false
+                    $task.Settings.RunOnlyIfIdle = $false
+                    $task.Settings.ExecutionTimeLimit = 'PT0S'
+                    $task.Settings.MultipleInstances = 2
+                    $action = $task.Actions.Create(0)
+                    $action.Path = $env:DESKBACK_JAVA
+                    $action.Arguments = $arguments
+                    $action.WorkingDirectory = $workingDirectory
+                    $folder.RegisterTaskDefinition('DeskBack', $task, 6, $user, $null, 3) | Out-Null
                 }
+                $shortcut = Join-Path ([Environment]::GetFolderPath('Startup')) 'DeskBack.lnk'
+                if (Test-Path -LiteralPath $shortcut) { Remove-Item -LiteralPath $shortcut }
                 """;
         ProcessBuilder builder = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive",
                 "-WindowStyle", "Hidden", "-EncodedCommand",
@@ -51,7 +74,7 @@ final class Autostart {
                 throw new IOException("Autostart setup timed out");
             }
             if (process.exitValue() != 0) {
-                throw new IOException("Could not create startup shortcut: "
+                throw new IOException("Could not register logon task: "
                         + new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip());
             }
         } catch (InterruptedException exception) {

@@ -56,11 +56,6 @@ public class DeskBack {
                 System.err.println("Could not release instance lock: " + exception.getMessage());
             }
         }, "deskback-instance-release"));
-        try {
-            Autostart.enable();
-        } catch (IOException | RuntimeException exception) {
-            System.err.println("Could not enable autostart: " + exception.getMessage());
-        }
         SessionRecorder recorder = new SessionRecorder(new SessionStore(), WindowsApps::findRunningApps);
         SessionEndListener.start(recorder);
         boolean darkTheme = isWindowsDarkTheme();
@@ -68,6 +63,15 @@ public class DeskBack {
             DesktopTray.start(() -> showWindow(isWindowsDarkTheme()));
             recorder.start(SESSION_UPDATE_INTERVAL_SECONDS);
             showWindow(darkTheme);
+            Thread setup = new Thread(() -> {
+                try {
+                    Autostart.enable();
+                } catch (IOException | RuntimeException exception) {
+                    System.err.println("Could not enable autostart: " + exception.getMessage());
+                }
+            }, "deskback-autostart-setup");
+            setup.setDaemon(true);
+            setup.start();
         });
     }
 
