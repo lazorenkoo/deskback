@@ -28,4 +28,3 @@ Autostart is configured on the first launch. Keep the JAR and `lib` folder in `t
 - **Swing / AWT** — popup, app selection and tray icon.
 - **JNA** — access to Windows APIs for detecting apps and handling shutdown.
 - **Maven Wrapper** — build and dependencies; no separate Maven installation needed.
-- **PowerShell and Windows Task Scheduler** — automatic startup at sign-in.
